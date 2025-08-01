@@ -1,6 +1,6 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::mem;
-const INITIAL_NBUCKETS: usize = 1;
+use std::{mem};
+const INITIAL_NBUCKETS: usize = 10;
 
 pub struct HashMap<K, V> {
     buckets: Vec<Vec<(K, V)>>,
@@ -68,7 +68,61 @@ where
         }
         mem::replace(&mut self.buckets, new_buckets);
     }
+
+    
+    // get the value from the key 
+    pub fn get(&self , key: &K) -> Option<&V> {
+        if self.buckets.is_empty() {
+            return None;
+        }
+
+        let bucket = self.bucket(key);
+        self.buckets[bucket]
+            .iter()
+            .find(|&(ekey,_)|ekey == key)
+            .map(|&(_,ref v)|v)
+
+    }
+
+
+    // Return the capacity of the Hashmap without reallocating space
+    pub fn capacity(&self)-> usize {
+        self.buckets.capacity()
+    }
+
+    //Removes a key from the hashmap, returning the value at the key if the key was previously in the Hashmap
+    pub fn remove(&mut self, key: &K) -> Option<V> {
+        if self.buckets.is_empty() {
+            return None;
+        }
+        
+        let bucket = self.bucket(key);
+        
+        // Find the position of the key in the bucket with matching pattern
+        let pos = self.buckets[bucket]
+            .iter()
+            .position(|&(ref k, _)| k == key)?;
+        
+        // Remove the key-value pair and return the value
+        let (_, value) = self.buckets[bucket].remove(pos);
+        if self.items > 0 {
+            self.items -= 1;
+        }
+        
+        Some(value)
+    }
+
 }
+
+
+
+
+
+
+
+
+
+// TEST DOWN HERE FOR THE IMPLEMENTATION
 
 #[cfg(test)]
 mod tests {
@@ -76,6 +130,36 @@ mod tests {
     #[test]
     fn insert() {
         let mut map = HashMap::new();
-        map.insert("shivaji", 1);
+        map.insert("abc", 1);
+    }
+
+    #[test]
+    fn get () {
+        let mut map = HashMap::new();
+        map.insert("abc", "def");
+        assert_eq!(map.get(&"abc") , Some(&"def"));
+    }
+    #[test]
+    fn get_empty () {
+        let mut map: HashMap<&'static str, u32> = HashMap::new();
+
+        assert_eq!(map.get(&"abc") , None);
+    }
+
+    #[test]
+    fn get_capacity(){
+        let mut map = HashMap::new();
+        map.insert(String::from("a"), 1);
+
+        assert_eq!(map.capacity(), 10);
+    }
+
+    #[test]
+    fn remove_pair() {
+        let mut map = HashMap::new();
+        map.insert(10, 100);
+        let remove_value_key = map.remove(&10);
+
+        assert_eq!(remove_value_key, Some(100));
     }
 }
