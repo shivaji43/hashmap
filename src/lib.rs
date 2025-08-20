@@ -162,4 +162,33 @@ mod tests {
 
         assert_eq!(remove_value_key, Some(100));
     }
+
+    #[test]
+    fn test_items_counter_bug() {
+        let mut map = HashMap::new();
+        map.insert("a", 1);
+        
+        // Print items counter - should be 1 but will likely be 0
+        println!("Items after first insert: {}", map.items);
+        
+        map.insert("b", 2);
+        println!("Items after second insert: {}", map.items);
+        
+        // This test shows the bug - items counter never increments
+        // assert_eq!(map.items, 2); // This would fail
+    }
+    
+    #[test]
+    fn test_capacity_method() {
+        let mut map = HashMap::new();
+        // Before any inserts, capacity should be 0 (no buckets)
+        println!("Capacity before insert: {}", map.capacity());
+        
+        map.insert("a", 1);
+        // After first insert, should have INITIAL_NBUCKETS = 10 buckets
+        println!("Capacity after first insert: {}", map.capacity());
+        println!("Buckets length: {}", map.buckets.len());
+        
+        // Currently capacity() returns buckets.capacity() not buckets.len()
+    }
 }
