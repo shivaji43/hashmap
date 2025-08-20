@@ -46,6 +46,7 @@ where
         }
 
         bucket.push((key, value));
+        self.items += 1;
         None
     }
 
@@ -66,7 +67,7 @@ where
             let bucket = (hasher.finish() % new_buckets.len() as u64) as usize;
             new_buckets[bucket].push((key, value));
         }
-        mem::replace(&mut self.buckets, new_buckets);
+        let _ = mem::replace(&mut self.buckets, new_buckets);
     }
 
     
@@ -88,6 +89,42 @@ where
     // Return the capacity of the Hashmap without reallocating space
     pub fn capacity(&self)-> usize {
         self.buckets.capacity()
+    }
+
+    // Returns the number of items in the hashmap
+    pub fn len(&self) -> usize {
+        self.items
+    }
+
+    // Returns true if the hashmap contains no items
+    pub fn is_empty(&self) -> bool {
+        self.items == 0
+    }
+
+    // Removes all items from the hashmap
+    pub fn clear(&mut self) {
+        for bucket in &mut self.buckets {
+            bucket.clear();
+        }
+        self.items = 0;
+    }
+
+    // Returns true if the hashmap contains the specified key
+    pub fn contains_key(&self, key: &K) -> bool {
+        self.get(key).is_some()
+    }
+
+    // Returns a mutable reference to the value corresponding to the key
+    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
+        if self.buckets.is_empty() {
+            return None;
+        }
+
+        let bucket = self.bucket(key);
+        self.buckets[bucket]
+            .iter_mut()
+            .find(|(ekey, _)| ekey == key)
+            .map(|(_, v)| v)
     }
 
     //Removes a key from the hashmap, returning the value at the key if the key was previously in the Hashmap
@@ -141,7 +178,7 @@ mod tests {
     }
     #[test]
     fn get_empty () {
-        let mut map: HashMap<&'static str, u32> = HashMap::new();
+        let map: HashMap<&'static str, u32> = HashMap::new();
 
         assert_eq!(map.get(&"abc") , None);
     }
@@ -161,5 +198,80 @@ mod tests {
         let remove_value_key = map.remove(&10);
 
         assert_eq!(remove_value_key, Some(100));
+    }
+
+    #[test]
+    fn len() {
+        let mut map = HashMap::new();
+        assert_eq!(map.len(), 0);
+        
+        map.insert("key1", 1);
+        assert_eq!(map.len(), 1);
+        
+        map.insert("key2", 2);
+        assert_eq!(map.len(), 2);
+        
+        map.remove(&"key1");
+        assert_eq!(map.len(), 1);
+        
+        map.clear();
+        assert_eq!(map.len(), 0);
+    }
+
+    #[test]
+    fn is_empty() {
+        let mut map = HashMap::new();
+        assert!(map.is_empty());
+        
+        map.insert("key", "value");
+        assert!(!map.is_empty());
+        
+        map.remove(&"key");
+        assert!(map.is_empty());
+    }
+
+    #[test]
+    fn clear() {
+        let mut map = HashMap::new();
+        map.insert("key1", 1);
+        map.insert("key2", 2);
+        map.insert("key3", 3);
+        
+        assert_eq!(map.len(), 3);
+        assert!(!map.is_empty());
+        
+        map.clear();
+        
+        assert_eq!(map.len(), 0);
+        assert!(map.is_empty());
+        assert_eq!(map.get(&"key1"), None);
+        assert_eq!(map.get(&"key2"), None);
+        assert_eq!(map.get(&"key3"), None);
+    }
+
+    #[test]
+    fn contains_key() {
+        let mut map = HashMap::new();
+        assert!(!map.contains_key(&"key"));
+        
+        map.insert("key", "value");
+        assert!(map.contains_key(&"key"));
+        assert!(!map.contains_key(&"nonexistent"));
+        
+        map.remove(&"key");
+        assert!(!map.contains_key(&"key"));
+    }
+
+    #[test]
+    fn get_mut() {
+        let mut map = HashMap::new();
+        map.insert("key", 42);
+        
+        if let Some(value) = map.get_mut(&"key") {
+            *value = 100;
+        }
+        
+        assert_eq!(map.get(&"key"), Some(&100));
+        assert_eq!(map.get_mut(&"nonexistent"), None);
     }
 }
