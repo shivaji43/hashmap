@@ -16,6 +16,12 @@ impl<K, V> HashMap<K, V> {
     }
 }
 
+impl<K, V> Default for HashMap<K, V> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<K, V> HashMap<K, V>
 where
     K: Hash + Eq,
@@ -46,6 +52,7 @@ where
         }
 
         bucket.push((key, value));
+        self.items += 1;
         None
     }
 
@@ -66,7 +73,7 @@ where
             let bucket = (hasher.finish() % new_buckets.len() as u64) as usize;
             new_buckets[bucket].push((key, value));
         }
-        mem::replace(&mut self.buckets, new_buckets);
+        self.buckets = new_buckets;
     }
 
     
@@ -79,15 +86,15 @@ where
         let bucket = self.bucket(key);
         self.buckets[bucket]
             .iter()
-            .find(|&(ekey,_)|ekey == key)
-            .map(|&(_,ref v)|v)
+            .find(|(ekey,_)| ekey == key)
+            .map(|(_,v)| v)
 
     }
 
 
     // Return the capacity of the Hashmap without reallocating space
     pub fn capacity(&self)-> usize {
-        self.buckets.capacity()
+        self.buckets.len()
     }
 
     //Removes a key from the hashmap, returning the value at the key if the key was previously in the Hashmap
@@ -101,7 +108,7 @@ where
         // Find the position of the key in the bucket with matching pattern
         let pos = self.buckets[bucket]
             .iter()
-            .position(|&(ref k, _)| k == key)?;
+            .position(|(k, _)| k == key)?;
         
         // Remove the key-value pair and return the value
         let (_, value) = self.buckets[bucket].remove(pos);
@@ -141,7 +148,7 @@ mod tests {
     }
     #[test]
     fn get_empty () {
-        let mut map: HashMap<&'static str, u32> = HashMap::new();
+        let map: HashMap<&'static str, u32> = HashMap::new();
 
         assert_eq!(map.get(&"abc") , None);
     }
@@ -164,31 +171,26 @@ mod tests {
     }
 
     #[test]
-    fn test_items_counter_bug() {
+    fn test_items_counter_and_resize() {
         let mut map = HashMap::new();
-        map.insert("a", 1);
         
-        // Print items counter - should be 1 but will likely be 0
-        println!("Items after first insert: {}", map.items);
+        // Insert enough items to trigger resize (> 75% of 10 = 8 items)
+        for i in 0..9 {
+            map.insert(i, i * 10);
+        }
         
-        map.insert("b", 2);
-        println!("Items after second insert: {}", map.items);
+        // Verify all items are still accessible after resize
+        for i in 0..9 {
+            assert_eq!(map.get(&i), Some(&(i * 10)));
+        }
         
-        // This test shows the bug - items counter never increments
-        // assert_eq!(map.items, 2); // This would fail
+        // Verify capacity increased due to resize
+        assert!(map.capacity() > 10);
     }
-    
+
     #[test]
-    fn test_capacity_method() {
-        let mut map = HashMap::new();
-        // Before any inserts, capacity should be 0 (no buckets)
-        println!("Capacity before insert: {}", map.capacity());
-        
-        map.insert("a", 1);
-        // After first insert, should have INITIAL_NBUCKETS = 10 buckets
-        println!("Capacity after first insert: {}", map.capacity());
-        println!("Buckets length: {}", map.buckets.len());
-        
-        // Currently capacity() returns buckets.capacity() not buckets.len()
+    fn test_default_trait() {
+        let map: HashMap<String, i32> = HashMap::default();
+        assert_eq!(map.capacity(), 0);
     }
 }
